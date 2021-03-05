@@ -11,15 +11,29 @@ const crypto = require('crypto');
 //////////// IPFS //////////////
 ////////////////////////////////
 
+let key = null
+let iv = null
+
+if (fs.existsSync('key')) {
+  key = fs.readFileSync('key').toString()
+} else {
+  fs.writeFileSync('key', crypto.randomBytes(16).toString('hex'))
+}
+if (fs.existsSync('iv')) {
+  iv = fs.readFileSync('iv').toString()
+} else {
+  fs.writeFileSync('iv', crypto.randomBytes(8).toString('hex'))
+}
+
 generateKeys()
-// _testing()
+_testing()
 
 
 async function uploadFileEncrypted(file, ipfspath) {
   try {
     const buff = fs.readFileSync(file);
-    const key = crypto.randomBytes(16).toString('hex'); // 16 bytes -> 32 chars
-    const iv = crypto.randomBytes(8).toString('hex');   // 8 bytes -> 16 chars
+    // const key = crypto.randomBytes(16).toString('hex'); // 16 bytes -> 32 chars
+    // const iv = crypto.randomBytes(8).toString('hex');   // 8 bytes -> 16 chars
     const ekey = encryptRSA(key); // 32 chars -> 684 chars
     const ebuff = encryptAES(buff, key, iv);
 
@@ -28,12 +42,13 @@ async function uploadFileEncrypted(file, ipfspath) {
       Buffer.from(iv, 'utf8'),     // char length: 16
       Buffer.from(ebuff, 'utf8')
     ])
-    
+
     await ipfs.files.write(
       ipfspath,
       content,
-      {create: true, parents: true}
+      { create: true, parents: true, hashAlg: 'blake2b-256', cidVersion: 1 }
     );
+
 
     console.log('ENCRYPTION --------')
     console.log('key:', key, 'iv:', iv, 'ekey:', ekey.length)
@@ -46,10 +61,10 @@ async function uploadFileEncrypted(file, ipfspath) {
   }
 }
 
-async function toArray(asyncIterator) { 
-  const arr=[]; 
-  for await(const i of asyncIterator) {
-    arr.push(i); 
+async function toArray(asyncIterator) {
+  const arr = [];
+  for await (const i of asyncIterator) {
+    arr.push(i);
   }
   return arr;
 }
@@ -57,7 +72,7 @@ async function toArray(asyncIterator) {
 async function downloadFileEncrypted(ipfspath) {
   try {
     let file_data = await ipfs.files.read(ipfspath)
-    
+
     let edata = []
     for await (const chunk of file_data)
       edata.push(chunk)
@@ -74,16 +89,16 @@ async function downloadFileEncrypted(ipfspath) {
     console.log('key:', key, 'iv:', iv)
     console.log('contents:', content.length, 'encrypted:', econtent.length)
     console.log('downloaded:', edata.length)
-    
+
     return content
-    
+
   } catch (err) {
     console.log(err)
     throw err;
   }
 }
 
-async function getUploadedFiles(ipfspath='/encrypted/') {
+async function getUploadedFiles(ipfspath = '/encrypted/') {
   let files = []
   const arr = await toArray(ipfs.files.ls(ipfspath))
   for (let file of arr) {
@@ -118,7 +133,7 @@ function decryptAES(buffer, secretKey, iv) {
 function generateKeys() {
   if (fs.existsSync('private.pem') && fs.existsSync('public.pem'))
     return;
-  
+
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 4096,
     publicKeyEncoding: {
@@ -137,7 +152,7 @@ function generateKeys() {
   fs.writeFileSync('public.pem', publicKey)
 }
 
-function encryptRSA(toEncrypt, pubkeyPath='public.pem') {
+function encryptRSA(toEncrypt, pubkeyPath = 'public.pem') {
   const absolutePath = path.resolve(pubkeyPath)
   const publicKey = fs.readFileSync(absolutePath, 'utf8')
   const buffer = Buffer.from(toEncrypt, 'utf8')
@@ -145,16 +160,16 @@ function encryptRSA(toEncrypt, pubkeyPath='public.pem') {
   return encrypted.toString('base64')
 }
 
-function decryptRSA(toDecrypt, privkeyPath='private.pem') {
+function decryptRSA(toDecrypt, privkeyPath = 'private.pem') {
   const absolutePath = path.resolve(privkeyPath)
   const privateKey = fs.readFileSync(absolutePath, 'utf8')
   const buffer = Buffer.from(toDecrypt, 'base64')
   const decrypted = crypto.privateDecrypt(
-  {
-    key: privateKey.toString(),
-    passphrase: '',
-  },
-  buffer,
+    {
+      key: privateKey.toString(),
+      passphrase: '',
+    },
+    buffer,
   )
   return decrypted.toString('utf8')
 }
@@ -162,23 +177,23 @@ function decryptRSA(toDecrypt, privkeyPath='private.pem') {
 async function _testing() {
   const file = 'package.json'  // file to upload
   const ipfspath = '/encrypted/data/' + file // ipfspath
-  
+
   // upload to ipfs path
   await uploadFileEncrypted(file, ipfspath)
-  
-  // download from ipfs path
-  const dl = await downloadFileEncrypted(ipfspath)
-  
-  // to buffer
-  const buff = Buffer.from(dl, 'hex')
 
-  // save buffer to file
-  const outfile = ipfspath.replace(/\//g, '_');
-  console.log('writing:', outfile)
-  fs.writeFile(outfile, buff, function(err) {
-    if (err) throw err;
-  })
-} 
+  // // download from ipfs path
+  // const dl = await downloadFileEncrypted(ipfspath)
+
+  // // to buffer
+  // const buff = Buffer.from(dl, 'hex')
+
+  // // save buffer to file
+  // const outfile = ipfspath.replace(/\//g, '_');
+  // console.log('writing:', outfile)
+  // fs.writeFile(outfile, buff, function (err) {
+  //   if (err) throw err;
+  // })
+}
 
 ////////////////////////////////
 ///////// REST API /////////////
@@ -197,7 +212,7 @@ app.get("/api/files", async (req, res, next) => {
     res.json(await getUploadedFiles())
   } catch (e) {
     // when /encrypted/ path not exists (~ no uploads): catch ipfs http error
-    res.json({error: e.toString()})
+    res.json({ error: e.toString() })
   }
 });
 
@@ -212,7 +227,7 @@ app.get(/^\/api\/file(\/.*)$/, async (req, res, next) => {
 });
 
 app.listen(rest_port, () => {
- console.log("Server running on port 3000");
+  console.log("Server running on port 3000");
 });
 
 ////////////////////////////////

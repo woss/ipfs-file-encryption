@@ -1,2 +1,5 @@
 *.pem
 node_modules/
+iv
+key
+_encrypted_data_package.json
