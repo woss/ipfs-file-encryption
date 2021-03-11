@@ -1,6 +1,7 @@
 const rest_port = 3333
 import express from 'express'
 import ipfsClient from 'ipfs-http-client'
+import { generateAsymmetricKeys, generateSymmetricKeys } from './crypto'
 import { getUploadedFiles } from './ipfs'
 
 const ipfsEndPoint = '/ip4/127.0.0.1/tcp/5001'
@@ -25,6 +26,16 @@ app.get('/', async (req, res) => {
   }
 })
 
+app.get('/api/gen', (req, res) => {
+  try {
+    generateAsymmetricKeys()
+    generateSymmetricKeys()
+    res.json({ ok: true })
+  } catch (error) {
+    res.send(error)
+  }
+})
+
 // app.get('/api/file/:path', async (req, res, next) => {
 //   try {
 //     let ipfspath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
@@ -40,14 +51,6 @@ app.get('/', async (req, res) => {
 // app.get('/api/test', (req, res) => {
 //   try {
 //     _testing()
-//     res.json({ ok: true })
-//   } catch (error) {
-//     res.send(error)
-//   }
-// })
-// app.get('/api/gen', (req, res) => {
-//   try {
-//     generateKeys()
 //     res.json({ ok: true })
 //   } catch (error) {
 //     res.send(error)
