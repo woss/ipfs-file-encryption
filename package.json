@@ -4,12 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "nodemon -w index.js index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
-    "ipfs-http-client": "^48.1.2"
+    "fastify": "^3.13.0",
+    "fastify-express": "^0.3.2",
+    "ipfs-cluster-api": "^0.0.9",
+    "ipfs-http-client": "^49.0.2"
   }
 }
