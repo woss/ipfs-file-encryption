@@ -35,10 +35,10 @@ export function generateSymmetricKeys() {
   let key = null // 16 bytes -> 32 chars
   let iv = null // 8 bytes -> 16 chars
   if (!existsSync(`${path}/key`)) {
-    writeFileSync(`${path}/key`, randomBytes(16).toString('hex'))
+    writeFileSync(`${path}/key`, randomBytes(16).toString('hex')) // should be 128 (or 256) bits
   }
-  if (!existsSync(`${path}/iv`)) {
-    writeFileSync(`${path}/iv`, randomBytes(8).toString('hex'))
+  if (!existsSync(`${path}/initializationVector`)) {
+    writeFileSync(`${path}/initializationVector`, randomBytes(16).toString('hex')) // IV is always 16-bytes
   }
 }
 
@@ -47,7 +47,7 @@ export function getSymmetricKeys(): { key: string; iv: string } {
 
   return {
     key: readFileSync(`${path}/key`).toString(),
-    iv: readFileSync(`${path}/iv`).toString(),
+    iv: readFileSync(`${path}/initializationVector`).toString(),
   }
 }
 
