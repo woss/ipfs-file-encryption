@@ -14,21 +14,7 @@ const cluster = IpfsClusterAPI('localhost', '9094', { protocol: 'http' }) // lea
 //////////// IPFS //////////////
 ////////////////////////////////
 
-const rootFolder = ''
 
-let key = null // 16 bytes -> 32 chars
-let iv = null // 8 bytes -> 16 chars
-
-if (fs.existsSync('key')) {
-  key = fs.readFileSync('key').toString()
-} else {
-  fs.writeFileSync('key', crypto.randomBytes(16).toString('hex'))
-}
-if (fs.existsSync('iv')) {
-  iv = fs.readFileSync('iv').toString()
-} else {
-  fs.writeFileSync('iv', crypto.randomBytes(8).toString('hex'))
-}
 
 
 
@@ -43,17 +29,17 @@ async function uploadFileEncrypted(file, ipfspath) {
       Buffer.from(iv, 'utf8'),     // char length: 16
       Buffer.from(ebuff, 'utf8')
     ])
-    const uploaded = await cluster.add({
-      path: ipfspath,
-      content: buff
-    })
+    // const uploaded = await cluster.add({
+    //   path: ipfspath,
+    //   content: buff
+    // })
 
-    console.log(uploaded)
+    // console.log(uploaded)
     await ipfs.files.write(
       ipfspath,
       // content,
       buff,
-      { create: true, parents: false, hashAlg: 'blake2b-256', cidVersion: 1 }
+      { create: true, parents: true, hashAlg: 'blake2b-256', cidVersion: 1 }
     );
 
     // console.log('ENCRYPTION --------')
@@ -78,13 +64,18 @@ async function toArray(asyncIterator) {
 }
 
 async function downloadFileEncrypted(ipfspath) {
-  console.log(ipfspath);
+  console.log('ipfspath', ipfspath);
   try {
+    for await (const file of ipfs.ls(ipfspath)) {
+      console.log(file)
+    }
+
+
     let file_data = await ipfs.files.read(ipfspath)
-    console.log('sds', file_data)
     let edata = []
-    for await (const chunk of file_data)
-      edata.push(chunk)
+    for await (const chunk of file_data) { edata.push(chunk) }
+
+
     edata = Buffer.concat(edata)
 
     // const key = decryptRSA(edata.slice(0, 684).toString('utf8'))
@@ -109,7 +100,7 @@ async function downloadFileEncrypted(ipfspath) {
 
 async function getUploadedFiles(ipfspath = `${rootFolder}/`) {
   let files = []
-  console.log(ipfspath)
+  console.log('ipfspath', ipfspath)
   console.log(await toArray(ipfs.ls(ipfspath)))
   const arr = await toArray(ipfs.files.ls(ipfspath))
   for (let file of arr) {
@@ -137,8 +128,8 @@ function encryptAES(buffer, secretKey, iv) {
 function decryptAES(buffer, secretKey, iv) {
   const decipher = crypto.createDecipheriv('aes-256-ctr', secretKey, iv);
   const data = decipher.update(buffer)
-  const decrpyted = Buffer.concat([data, decipher.final()]);
-  return decrpyted;
+  const decrypted = Buffer.concat([data, decipher.final()]);
+  return decrypted;
 }
 
 function generateKeys() {
@@ -223,62 +214,3 @@ async function _testing() {
   //   if (err) throw err;
   // })
 }
-
-////////////////////////////////
-///////// REST API /////////////
-////////////////////////////////
-
-const rest_port = 3333;
-const express = require('express')
-const app = express();
-
-
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
-
-app.get("/api/files", async (req, res, next) => {
-  try {
-    res.json(await getUploadedFiles())
-  } catch (e) {
-    // when /encrypted/ path not exists (~ no uploads): catch ipfs http error
-    res.json({ error: e.toString() })
-  }
-});
-
-app.get('/api/file/:path', async (req, res, next) => {
-  try {
-    const ipfspath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
-    // const ipfspath = req.params[0]
-    // const ipfspath = req.params.path
-    const content = await downloadFileEncrypted(ipfspath)
-    res.send(content)
-  } catch (err) {
-    res.send('error: ' + err)
-  }
-});
-
-
-app.get('/api/gen', (req, res) => {
-  generateKeys()
-  _testing()
-  res.json({ ok: true })
-})
-
-app.get('/api/', async (req, res) => {
-
-  res.json({
-    cluster: {
-      health: await cluster.health.graph()
-    }
-  })
-})
-
-
-app.listen(rest_port, () => {
-  console.log("Server running on port " + rest_port);
-});
-
-////////////////////////////////
-////////////////////////////////
-////////////////////////////////
