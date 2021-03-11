@@ -1,9 +1,10 @@
-import { readdirSync, statSync } from 'fs'
+import { readdirSync, statSync, readFileSync } from 'fs'
 import { resolve, join } from 'path'
-import { uploadFileEncrypted } from './ipfs'
+import { calculatePhash, PhashOutputFormat } from './image'
+import { uploadFile } from './ipfs'
 const dirPath = resolve(__dirname, '../images')
 
-async function uploadFile(rootPath: string, fileName: string) {
+async function upload(rootPath: string, fileName: string) {
   try {
     const f = resolve(dirPath, fileName)
 
@@ -11,7 +12,20 @@ async function uploadFile(rootPath: string, fileName: string) {
 
     const start = process.hrtime()
 
-    await uploadFileEncrypted(f, `${rootPath}/${fileName}`)
+    await uploadFile(f, `${rootPath}/${fileName}/data`)
+    const phash = await calculatePhash(readFileSync(f), 16)
+    await uploadFile(
+      JSON.stringify(
+        {
+          phash,
+        },
+        null,
+        2,
+      ),
+      `${rootPath}/${fileName}/metadata.json`,
+      false,
+    )
+    await uploadFile(phash, `${rootPath}/${fileName}/phash`, false)
 
     const end = process.hrtime(start)
     console.info('Execution time (hr): %ds %dms', end[0], end[1] / 1000000)
@@ -26,12 +40,12 @@ export async function testing(rootPath = '/') {
     if (statSync(dirPath + '/' + fileName).isDirectory()) {
       throw new Error('not implemented sub dir')
     } else {
-      await uploadFile(rootPath, fileName)
+      await upload(rootPath, fileName)
     }
   })
 
   // upload to ipfs path
-  // await uploadFileEncrypted(file, ipfspath)
+  // await uploadFile(file, ipfspath)
 
   // // download from ipfs path
   // const dl = await downloadFileEncrypted(ipfspath)

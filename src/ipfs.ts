@@ -1,6 +1,6 @@
 import { toArray } from './utils'
 import { ipfs } from './app'
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { decryptAES, encryptAES, getSymmetricKeys } from './crypto'
 
 export async function getUploadedFiles(ipfspath = '/'): Promise<any[]> {
@@ -22,27 +22,32 @@ export async function getUploadedFiles(ipfspath = '/'): Promise<any[]> {
   return files
 }
 
-export async function uploadFileEncrypted(localPath: string, ipfspath: string) {
+export async function uploadFile(localPath: string, ipfsPath: string, encrypt = true) {
   try {
-    const { key, iv } = getSymmetricKeys()
-    const fileBuffer = readFileSync(localPath)
-    // const ekey = encryptRSA(key); // 32 chars -> 684 chars
-    const encryptedHexString = encryptAES(fileBuffer, key, iv)
+    let content = Buffer.from(localPath, 'utf-8')
+    if (encrypt) {
+      const fileBuffer = readFileSync(localPath)
 
-    const content = Buffer.concat([
-      // headers: encrypted key and IV (len: 700=684+16)
-      // Buffer.from(ekey, 'utf8'),   // char length: 684
-      Buffer.from(iv, 'utf8'), // char length: 16
-      Buffer.from(encryptedHexString, 'utf8'),
-    ])
+      const { key, iv } = getSymmetricKeys()
+      // const ekey = encryptRSA(key); // 32 chars -> 684 chars
+      const encryptedHexString = encryptAES(fileBuffer, key, iv)
+
+      content = Buffer.concat([
+        // headers: encrypted key and IV (len: 700=684+16)
+        // Buffer.from(ekey, 'utf8'),   // char length: 684
+        Buffer.from(iv, 'utf8'), // char length: 16
+        Buffer.from(encryptedHexString, 'utf8'),
+      ])
+    }
+
     // const uploaded = await cluster.add({
-    //   path: ipfspath,
+    //   path: ipfsPath,
     //   content: buff
     // })
 
     // console.log(uploaded)
     await ipfs.files.write(
-      ipfspath,
+      ipfsPath,
       content,
       // fileBuffer,
       { create: true, parents: true, hashAlg: 'blake2b-256', cidVersion: 1 },
@@ -60,7 +65,7 @@ export async function uploadFileEncrypted(localPath: string, ipfspath: string) {
   }
 }
 
-export async function downloadFileEncrypted(ipfsPath: string) {
+export async function downloadFileEncrypted(ipfsPath: string, decrypt = true) {
   try {
     console.log('Downloading file for the path %s', ipfsPath)
     const { key } = getSymmetricKeys()
@@ -84,9 +89,13 @@ export async function downloadFileEncrypted(ipfsPath: string) {
 
     const encryptedBuffer = Buffer.from(econtent, 'hex')
 
-    const decryptStart = process.hrtime()
-    const content = decryptAES(encryptedBuffer, key, iv)
-    const decryptEnd = process.hrtime(decryptStart)
+    let content = encBufferConcat
+    if (decrypt) {
+      const decryptStart = process.hrtime()
+      content = decryptAES(encryptedBuffer, key, iv)
+      const decryptEnd = process.hrtime(decryptStart)
+      console.log('decrypting took %s sec %s ms', decryptEnd[0], decryptEnd[1] / 1000000)
+    }
 
     console.log(' ')
     console.log('DECRYPTION --------')
@@ -94,7 +103,6 @@ export async function downloadFileEncrypted(ipfsPath: string) {
     console.log('contents:', content.length, 'encrypted:', econtent.length)
     console.log('downloaded:', encodedData.length)
     console.log('reading took %s sec %s ms', readEnd[0], readEnd[1] / 1000000)
-    console.log('decrypting took %s sec %s ms', decryptEnd[0], decryptEnd[1] / 1000000)
 
     return content
   } catch (err) {

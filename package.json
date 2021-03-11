@@ -9,6 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@canvas/image": "^1.0.1",
+    "blockhash-core": "^0.1.0",
     "express": "^4.17.1",
     "ipfs-cluster-api": "^0.0.9",
     "ipfs-http-client": "^49.0.4",

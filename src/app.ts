@@ -20,7 +20,15 @@ app.get('/', async (req, res) => {
   try {
     const files = await getUploadedFiles()
     console.log('Found %s files', files.length)
-    res.json({ data: files, total: files.length })
+    res.json({
+      data: files.map((f) => {
+        return {
+          url: `http://localhost:${rest_port}/file${f.path}`,
+          ...f,
+        }
+      }),
+      total: files.length,
+    })
   } catch (e) {
     // when /encrypted/ path not exists (~ no uploads): catch ipfs http error
     res.json({ error: e.toString() })
@@ -55,10 +63,12 @@ app.get(/^\/file(\/.*)$/, async (req, res, next) => {
     const ipfsPath = req.params[0]
     console.log(ipfsPath)
 
-    const content = await downloadFileEncrypted(ipfsPath)
+    const extension = ipfsPath.split('.').pop()
+    const content = await downloadFileEncrypted(ipfsPath, extension !== 'json')
     // const content = await downloadFileEncrypted(req.params.path)
+    console.log('extension', extension, extension === 'json')
     res.set({
-      'Content-Type': 'image/jpeg',
+      'Content-Type': extension === 'json' ? 'application/json' : 'image/jpeg',
     })
     res.send(content)
   } catch (err) {
