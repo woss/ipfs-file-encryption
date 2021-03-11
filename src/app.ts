@@ -2,7 +2,8 @@ const rest_port = 3333
 import express from 'express'
 import ipfsClient from 'ipfs-http-client'
 import { generateAsymmetricKeys, generateSymmetricKeys } from './crypto'
-import { getUploadedFiles } from './ipfs'
+import { getUploadedFiles, downloadFileEncrypted } from './ipfs'
+import { testing } from './sample'
 
 const ipfsEndPoint = '/ip4/127.0.0.1/tcp/5001'
 
@@ -26,7 +27,7 @@ app.get('/', async (req, res) => {
   }
 })
 
-app.get('/api/gen', (req, res) => {
+app.get('/gen', (req, res) => {
   try {
     generateAsymmetricKeys()
     generateSymmetricKeys()
@@ -36,19 +37,32 @@ app.get('/api/gen', (req, res) => {
   }
 })
 
-// app.get('/api/file/:path', async (req, res, next) => {
-//   try {
-//     let ipfspath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
-//     //  ipfspath = req.params[0]
-//     ipfspath = req.params.path
-//     const content = await downloadFileEncrypted(ipfspath)
-//     res.send(content)
-//   } catch (err) {
-//     res.send('error: ' + err)
-//   }
-// })
+app.get('/sample', (req, res) => {
+  try {
+    testing()
+    res.json({ ok: true })
+  } catch (error) {
+    res.send(error)
+  }
+})
 
-// app.get('/api/test', (req, res) => {
+app.get('/file/:path', async (req, res, next) => {
+  try {
+    let ipfspath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
+    //  ipfspath = req.params[0]
+    // ipfspath = req.params.path
+
+    const content = await downloadFileEncrypted(ipfspath)
+    res.set({
+      'Content-Type': 'image/jpeg',
+    })
+    res.send(content)
+  } catch (err) {
+    res.send('error: ' + err)
+  }
+})
+
+// app.get('/test', (req, res) => {
 //   try {
 //     _testing()
 //     res.json({ ok: true })
@@ -57,7 +71,7 @@ app.get('/api/gen', (req, res) => {
 //   }
 // })
 
-// app.get('/api/', async (req, res) => {
+// app.get('/status', async (req, res) => {
 //   res.json({
 //     cluster: {
 //       health: await cluster.health.graph(),

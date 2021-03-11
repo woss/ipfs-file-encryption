@@ -1,4 +1,4 @@
-import { generateKeyPairSync, randomBytes } from 'crypto'
+import { generateKeyPairSync, randomBytes, createCipheriv, createDecipheriv } from 'crypto'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
 
@@ -49,4 +49,25 @@ export function getSymmetricKeys(): { key: string; iv: string } {
     key: readFileSync(`${path}/key`).toString(),
     iv: readFileSync(`${path}/iv`).toString(),
   }
+}
+
+/**
+ * Return encrypted HEX string
+ * @param buffer
+ * @param secretKey
+ * @param iv
+ * @returns
+ */
+export function encryptAES(buffer: Buffer, secretKey: string, iv: string): string {
+  const cipher = createCipheriv('aes-256-ctr', secretKey, iv)
+  const data = cipher.update(buffer)
+  const encrypted = Buffer.concat([data, cipher.final()])
+  return encrypted.toString('hex')
+}
+
+export function decryptAES(buffer: Buffer, secretKey: string, iv: string) {
+  const decipher = createDecipheriv('aes-256-ctr', secretKey, iv)
+  const data = decipher.update(buffer)
+  const decrypted = Buffer.concat([data, decipher.final()])
+  return decrypted
 }
