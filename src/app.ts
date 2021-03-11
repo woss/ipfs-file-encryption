@@ -56,20 +56,18 @@ app.get('/sample', (req, res) => {
 
 // this is cool way to get the url without url_encode http://localhost:3333/file/woss/_MG_0773-2.jpg
 app.get(/^\/file(\/.*)$/, async (req, res, next) => {
-  // app.get('/file/:path', async (req, res, next) => {
   try {
-    // const ipfsPath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
-
     const ipfsPath = req.params[0]
     console.log(ipfsPath)
 
     const extension = ipfsPath.split('.').pop()
+    const fileNameParts = ipfsPath.split('/')
     const content = await downloadFileEncrypted(ipfsPath, extension !== 'json')
-    // const content = await downloadFileEncrypted(req.params.path)
-    console.log('extension', extension, extension === 'json')
     res.set({
       'Content-Type': extension === 'json' ? 'application/json' : 'image/jpeg',
+      'x-file-name': fileNameParts[fileNameParts.length - 2],
     })
+
     res.send(content)
   } catch (err) {
     res.send('error: ' + err)
