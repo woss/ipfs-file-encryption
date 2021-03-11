@@ -39,20 +39,24 @@ app.get('/gen', (req, res) => {
 
 app.get('/sample', (req, res) => {
   try {
-    testing()
+    testing('/woss')
     res.json({ ok: true })
   } catch (error) {
     res.send(error)
   }
 })
 
-app.get('/file/:path', async (req, res, next) => {
+// this is cool way to get the url without url_encode http://localhost:3333/file/woss/_MG_0773-2.jpg
+app.get(/^\/file(\/.*)$/, async (req, res, next) => {
+  // app.get('/file/:path', async (req, res, next) => {
   try {
-    let ipfspath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
-    //  ipfspath = req.params[0]
-    // ipfspath = req.params.path
+    // const ipfsPath = req.params.path[0] === '/' ? req.params.path : '/' + req.params.path
 
-    const content = await downloadFileEncrypted(ipfspath)
+    const ipfsPath = req.params[0]
+    console.log(ipfsPath)
+
+    const content = await downloadFileEncrypted(ipfsPath)
+    // const content = await downloadFileEncrypted(req.params.path)
     res.set({
       'Content-Type': 'image/jpeg',
     })
@@ -61,23 +65,6 @@ app.get('/file/:path', async (req, res, next) => {
     res.send('error: ' + err)
   }
 })
-
-// app.get('/test', (req, res) => {
-//   try {
-//     _testing()
-//     res.json({ ok: true })
-//   } catch (error) {
-//     res.send(error)
-//   }
-// })
-
-// app.get('/status', async (req, res) => {
-//   res.json({
-//     cluster: {
-//       health: await cluster.health.graph(),
-//     },
-//   })
-// })
 
 app.listen(rest_port, () => {
   console.log('Server running on port ' + rest_port)

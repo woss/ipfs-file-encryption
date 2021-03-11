@@ -60,43 +60,39 @@ export async function uploadFileEncrypted(localPath: string, ipfspath: string) {
   }
 }
 
-export async function downloadFileEncrypted(ipfspath: string) {
+export async function downloadFileEncrypted(ipfsPath: string) {
   try {
-    console.log('Downloading file for the path %s', ipfspath)
-
+    console.log('Downloading file for the path %s', ipfsPath)
     const { key } = getSymmetricKeys()
 
-    // for await (const file of ipfs.ls(ipfspath)) {
-    //   console.log(file)
-    // }
     const readStart = process.hrtime()
-    let file_data = ipfs.files.read(ipfspath)
-    let edata = []
+    let file_data = ipfs.files.read(ipfsPath)
+    let encodedData = []
     for await (const chunk of file_data) {
-      edata.push(chunk)
+      encodedData.push(chunk)
     }
     const readEnd = process.hrtime(readStart)
 
-    const encBuffer = Buffer.concat(edata)
+    const encBufferConcat = Buffer.concat(encodedData)
 
-    // const key = decryptRSA(edata.slice(0, 684).toString())
-    // const iv = encBuffer.slice(684, 700).toString()
+    // const key = decryptRSA(encodedData.slice(0, 684).toString())
+    // const iv = encBufferConcat.slice(684, 700).toString()
 
-    const iv = encBuffer.slice(0, 16).toString()
+    const iv = encBufferConcat.slice(0, 16).toString()
     // 16 because we are adding only one header
-    const econtent = encBuffer.slice(16).toString()
+    const econtent = encBufferConcat.slice(16).toString()
 
-    const ebuf = Buffer.from(econtent, 'hex')
+    const encryptedBuffer = Buffer.from(econtent, 'hex')
 
     const decryptStart = process.hrtime()
-    const content = decryptAES(ebuf, key, iv)
+    const content = decryptAES(encryptedBuffer, key, iv)
     const decryptEnd = process.hrtime(decryptStart)
 
     console.log(' ')
     console.log('DECRYPTION --------')
     console.log('key:', key, 'iv:', iv)
     console.log('contents:', content.length, 'encrypted:', econtent.length)
-    console.log('downloaded:', edata.length)
+    console.log('downloaded:', encodedData.length)
     console.log('reading took %s sec %s ms', readEnd[0], readEnd[1] / 1000000)
     console.log('decrypting took %s sec %s ms', decryptEnd[0], decryptEnd[1] / 1000000)
 
